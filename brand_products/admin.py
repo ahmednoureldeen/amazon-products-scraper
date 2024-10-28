@@ -6,7 +6,7 @@ class BrandAdmin(admin.ModelAdmin):
     pass
 
 class ProductAdmin(admin.ModelAdmin):
-    pass
+    list_filter = ["brand_id"]
 
 admin.site.register(Brand, BrandAdmin)
 admin.site.register(Product, ProductAdmin)
