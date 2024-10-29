@@ -1,7 +1,9 @@
 import random
+import time
 from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 import requests
+from django.conf import settings
 
 from brand_products.models import Brand, Product
 
@@ -18,7 +20,7 @@ def save_products(brand, products):
     for p in products:        
         product, created = Product.objects.get_or_create(name=p.select_one('div[data-cy="title-recipe"] span.a-text-normal').text, brand=brand)        
         product.asin=p["data-asin"]
-        product.sku=""
+        product.sku="" # could not find the sku in the page.
         product.image_url=p.select_one("img")['src']
         product.save()
 
@@ -72,18 +74,34 @@ def get_brand_products(brand):
         next_page_url = urljoin(amazon_base_url, next_page_url)
         print(f'Scraping next page: {next_page_url}')
         soup = parse_page(brand, next_page_url)
-        next_page_el = soup.select_one('a.s-pagination-next')    
+        if soup:
+            next_page_el = soup.select_one('a.s-pagination-next')
+        else:
+            print("Brand({0}) products not totally retrieved.".format(brand.name))
+            break
 
-def parse_page(brand, page_url):    
-    print('-------------- start parse ', page_url)
-    # select random user-agent to avoid being blocked
-    custom_headers["user-agent"] = random_ua()
-    print("user-agent ----> ", custom_headers["user-agent"])
-    response = requests.get(page_url, headers=custom_headers)    
-    print("response status ", response.status_code)
+def parse_page(brand, page_url):
+    retries = settings.NUMBER_OF_RETRIES
+    print("NUMBER_OF_RETRIES: ", retries)
+    while True:
+        print('-------------- start parse ', page_url)
+        # select random user-agent to avoid being blocked
+        custom_headers["user-agent"] = random_ua()
+        print("user-agent ----> ", custom_headers["user-agent"])
+        response = requests.get(page_url, headers=custom_headers)
+        print("response status ", response.status_code)
+        if response.status_code == 200:
+            break
+        elif retries:
+            retries -= 1
+            delay = random.randint(settings.MIN_RETRY_DELAY, settings.MAX_RETRY_DELAY)
+            print("Wait {0} seconds to retry".format(delay))
+            time.sleep(delay)
+        else:
+            print("Page {0} could not be retrieved".format(page_url))
+            return None
     soup = BeautifulSoup(response.text, 'lxml')
-    products = soup.select('.s-result-item[data-component-type="s-search-result"]')    
-    print("page products count ", len(products))
+    products = soup.select('.s-result-item[data-component-type="s-search-result"]')
     save_products(brand, products)
     print("--------------------")
     return soup

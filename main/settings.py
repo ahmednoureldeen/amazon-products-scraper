@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/5.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
-
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -131,3 +131,9 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10
 }
+
+# number of retries for a failed request.
+NUMBER_OF_RETRIES = int(os.environ.setdefault("NUMBER_OF_RETRIES", '5'))
+# min and max delay settings to pick a random delay value between them for each retry
+MIN_RETRY_DELAY = int(os.environ.setdefault("MIN_RETRY_DELAY", '5'))
+MAX_RETRY_DELAY = int(os.environ.setdefault("MAX_RETRY_DELAY", '15'))
