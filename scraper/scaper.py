@@ -66,12 +66,17 @@ def get_brand_products(brand):
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'lxml')
             # Find the brand filter and get the URL for the filtering by the specific brand name for more precise result
-            filter_href = soup.select_one('#brandsRefinements>ul li[aria-label="{0}" i] a'.format(brand.name))["href"]
-
-            brand_filter_url = urljoin(amazon_base_url, filter_href)
-            soup = parse_page(brand, brand_filter_url)
-            next_page_el = soup.select_one('a.s-pagination-next')
-            break
+            brand_filter = soup.select_one('#brandsRefinements>ul li[aria-label="{0}" i] a'.format(brand.name))
+            if brand_filter:
+                filter_href = brand_filter["href"]
+                brand_filter_url = urljoin(amazon_base_url, filter_href)
+                soup = parse_page(brand, brand_filter_url)
+                if soup:
+                    next_page_el = soup.select_one('a.s-pagination-next')
+                    break
+            else:
+                # brand filter not found as captcha or pages retrieved.
+                break
         elif retries:
             retries -= 1
             delay = random.randint(settings.MIN_RETRY_DELAY, settings.MAX_RETRY_DELAY)
