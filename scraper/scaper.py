@@ -58,17 +58,29 @@ custom_headers = {
 def get_brand_products(brand):
     # search by brand name at first
     url = '{0}s?k={1}'.format(amazon_base_url, brand.name)
+    next_page_el = None
+    retries = settings.NUMBER_OF_RETRIES
+    while True:
+        response = requests.get(url, headers=custom_headers)
+        print("response status ", response.status_code)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'lxml')
+            # Find the brand filter and get the URL for the filtering by the specific brand name for more precise result
+            filter_href = soup.select_one('#brandsRefinements>ul li[aria-label="{0}" i] a'.format(brand.name))["href"]
 
-    response = requests.get(url, headers=custom_headers)    
-    print("response 1 status ", response.status_code)
-    soup = BeautifulSoup(response.text, 'lxml')
-    # Find the brand filter and get the URL for the filtering by the specific brand name for more precise result
-    filter_href = soup.select_one('#brandsRefinements>ul li[aria-label="{0}" i] a'.format(brand.name))["href"]    
+            brand_filter_url = urljoin(amazon_base_url, filter_href)
+            soup = parse_page(brand, brand_filter_url)
+            next_page_el = soup.select_one('a.s-pagination-next')
+            break
+        elif retries:
+            retries -= 1
+            delay = random.randint(settings.MIN_RETRY_DELAY, settings.MAX_RETRY_DELAY)
+            print("Wait {0} seconds to retry".format(delay))
+            time.sleep(delay)
+        else:
+            print("Failed to retrieve brand {0} ".format(brand.name))
+            break
 
-    brand_filter_url = urljoin(amazon_base_url, filter_href)
-    soup = parse_page(brand, brand_filter_url)
-
-    next_page_el = soup.select_one('a.s-pagination-next')    
     while next_page_el:        
         next_page_url = next_page_el['href']
         next_page_url = urljoin(amazon_base_url, next_page_url)
