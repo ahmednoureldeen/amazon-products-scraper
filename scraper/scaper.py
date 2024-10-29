@@ -18,8 +18,8 @@ def scrape_amazon_brands():
 
 def save_products(brand, products):
     for p in products:        
-        product, created = Product.objects.get_or_create(name=p.select_one('div[data-cy="title-recipe"] span.a-text-normal').text, brand=brand)        
-        product.asin=p["data-asin"]
+        product, created = Product.objects.get_or_create(asin=p["data-asin"], brand=brand)
+        product.name = p.select_one('div[data-cy="title-recipe"] span.a-text-normal').text
         product.sku="" # could not find the sku in the page.
         product.image_url=p.select_one("img")['src']
         product.save()
